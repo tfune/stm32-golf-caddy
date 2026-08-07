@@ -17,5 +17,6 @@ HAL_StatusTypeDef BME280_Init(void);
 HAL_StatusTypeDef BME280_ReadRawData(void);
 HAL_StatusTypeDef BME280_ReadCalibrationData(void);
 HAL_StatusTypeDef BME280_CompensateTemperature(void);
+HAL_StatusTypeDef BME280_CompensatePressure(void);
 
 #endif

@@ -22,6 +22,11 @@ void App_Init(void)
 	{
 	    return;
 	}
+
+	if (BME280_CompensatePressure() != HAL_OK)
+	{
+		return;
+	}
 }
 
 void App_Run(uint32_t currentTime)
