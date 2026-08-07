@@ -1,11 +1,27 @@
 #include "app.h"
 #include "bme280.h"
 
-volatile HAL_StatusTypeDef bme280Status;
-
 void App_Init(void)
 {
-	bme280Status = BME280_Init();
+	if (BME280_Init() != HAL_OK)
+	{
+	    return;
+	}
+
+	if (BME280_ReadCalibrationData() != HAL_OK)
+	{
+	    return;
+	}
+
+	if (BME280_ReadRawData() != HAL_OK)
+	{
+	    return;
+	}
+
+	if (BME280_CompensateTemperature() != HAL_OK)
+	{
+	    return;
+	}
 }
 
 void App_Run(uint32_t currentTime)
