@@ -12,11 +12,14 @@
 #define BME280_CONFIG_REG		0xF5
 #define BME280_DATA_REG			0xF7
 #define BME280_CALIB00_REG		0x88
+#define BME280_CALIB25_REG		0xA1
+#define BME280_CALIB26_REG		0xE1
 
 HAL_StatusTypeDef BME280_Init(void);
 HAL_StatusTypeDef BME280_ReadRawData(void);
 HAL_StatusTypeDef BME280_ReadCalibrationData(void);
 HAL_StatusTypeDef BME280_CompensateTemperature(void);
 HAL_StatusTypeDef BME280_CompensatePressure(void);
+HAL_StatusTypeDef BME280_CompensateHumidity(void);
 
 #endif

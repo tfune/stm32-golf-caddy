@@ -27,6 +27,11 @@ void App_Init(void)
 	{
 		return;
 	}
+
+	if (BME280_CompensateHumidity() != HAL_OK)
+	{
+		return;
+	}
 }
 
 void App_Run(uint32_t currentTime)

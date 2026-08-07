@@ -7,6 +7,7 @@ static uint32_t rawTemperature;
 static uint16_t rawHumidity;
 
 static uint8_t calibrationData[24];
+static uint8_t humidityCalibrationData[7];
 
 static uint16_t dig_T1;
 static int16_t dig_T2;
@@ -22,9 +23,17 @@ static int16_t dig_P7;
 static int16_t dig_P8;
 static int16_t dig_P9;
 
+static uint8_t  dig_H1;
+static int16_t  dig_H2;
+static uint8_t  dig_H3;
+static int16_t  dig_H4;
+static int16_t  dig_H5;
+static int8_t   dig_H6;
+
 static int32_t tFine;
 static float temperature_C;
 static float pressure_hPa;
+static float humidity_percent;
 
 HAL_StatusTypeDef BME280_Init(void)
 {
@@ -142,19 +151,49 @@ HAL_StatusTypeDef BME280_ReadCalibrationData(void)
 		return HAL_ERROR;
 	}
 
+	if (HAL_I2C_Mem_Read(
+			&hi2c1,
+			BME280_I2C_ADDRESS << 1,
+			BME280_CALIB25_REG,
+			I2C_MEMADD_SIZE_8BIT,
+			&dig_H1,
+			1,
+			100) != HAL_OK)
+	{
+		return HAL_ERROR;
+	}
+
+	if (HAL_I2C_Mem_Read(
+			&hi2c1,
+			BME280_I2C_ADDRESS << 1,
+			BME280_CALIB26_REG,
+			I2C_MEMADD_SIZE_8BIT,
+			humidityCalibrationData,
+			7,
+			100) != HAL_OK)
+	{
+		return HAL_ERROR;
+	}
+
 	dig_T1 = ((uint16_t)calibrationData[1] << 8) | calibrationData[0];
 	dig_T2 = ((int16_t)calibrationData[3] << 8) | calibrationData[2];
 	dig_T3 = ((int16_t)calibrationData[5] << 8) | calibrationData[4];
 
 	dig_P1 = ((uint16_t)calibrationData[7]  << 8) | calibrationData[6];
-	dig_P2 = ((int16_t) calibrationData[9]  << 8) | calibrationData[8];
-	dig_P3 = ((int16_t) calibrationData[11] << 8) | calibrationData[10];
-	dig_P4 = ((int16_t) calibrationData[13] << 8) | calibrationData[12];
-	dig_P5 = ((int16_t) calibrationData[15] << 8) | calibrationData[14];
-	dig_P6 = ((int16_t) calibrationData[17] << 8) | calibrationData[16];
-	dig_P7 = ((int16_t) calibrationData[19] << 8) | calibrationData[18];
-	dig_P8 = ((int16_t) calibrationData[21] << 8) | calibrationData[20];
-	dig_P9 = ((int16_t) calibrationData[23] << 8) | calibrationData[22];
+	dig_P2 = ((int16_t)calibrationData[9]  << 8) | calibrationData[8];
+	dig_P3 = ((int16_t)calibrationData[11] << 8) | calibrationData[10];
+	dig_P4 = ((int16_t)calibrationData[13] << 8) | calibrationData[12];
+	dig_P5 = ((int16_t)calibrationData[15] << 8) | calibrationData[14];
+	dig_P6 = ((int16_t)calibrationData[17] << 8) | calibrationData[16];
+	dig_P7 = ((int16_t)calibrationData[19] << 8) | calibrationData[18];
+	dig_P8 = ((int16_t)calibrationData[21] << 8) | calibrationData[20];
+	dig_P9 = ((int16_t)calibrationData[23] << 8) | calibrationData[22];
+
+	dig_H2 = ((int16_t)humidityCalibrationData[1] << 8) | humidityCalibrationData[0];
+	dig_H3 = humidityCalibrationData[2];
+	dig_H4 = ((int16_t)humidityCalibrationData[3] << 4) | (humidityCalibrationData[4] & 0x0F);
+	dig_H5 = ((int16_t)humidityCalibrationData[5] << 4) | (humidityCalibrationData[4] >> 4);
+	dig_H6 = (int8_t)humidityCalibrationData[6];
 
 	return HAL_OK;
 }
@@ -215,6 +254,44 @@ HAL_StatusTypeDef BME280_CompensatePressure(void)
                   (((int64_t)dig_P7) << 4);
 
     pressure_hPa = pressureRaw / 25600.0f;
+
+    return HAL_OK;
+}
+
+HAL_StatusTypeDef BME280_CompensateHumidity(void)
+{
+    int32_t humidityRaw;
+    int32_t humidityComp;
+
+    humidityRaw = rawHumidity;
+
+    humidityComp = tFine - ((int32_t)76800);
+
+    humidityComp = (((((humidityRaw << 14) -
+                      (((int32_t)dig_H4) << 20) -
+                      (((int32_t)dig_H5) * humidityComp)) +
+                     ((int32_t)16384)) >> 15) *
+                   (((((((humidityComp * ((int32_t)dig_H6)) >> 10) *
+                        (((humidityComp * ((int32_t)dig_H3)) >> 11) +
+                         ((int32_t)32768))) >> 10) +
+                      ((int32_t)2097152)) *
+                     ((int32_t)dig_H2) + 8192) >> 14));
+
+    humidityComp = humidityComp -
+                   (((((humidityComp >> 15) * (humidityComp >> 15)) >> 7) *
+                     ((int32_t)dig_H1)) >> 4);
+
+    if (humidityComp < 0)
+    {
+        humidityComp = 0;
+    }
+
+    if (humidityComp > 419430400)
+    {
+        humidityComp = 419430400;
+    }
+
+    humidity_percent = (humidityComp >> 12) / 1024.0f;
 
     return HAL_OK;
 }
