@@ -1,5 +1,7 @@
+#include <ssd1309.h>
 #include "app.h"
 #include "bme280.h"
+#include "display.h"
 
 void App_Init(void)
 {
@@ -8,30 +10,12 @@ void App_Init(void)
 	    return;
 	}
 
-	if (BME280_ReadCalibrationData() != HAL_OK)
-	{
-	    return;
-	}
-
-	if (BME280_ReadRawData() != HAL_OK)
-	{
-	    return;
-	}
-
-	if (BME280_CompensateTemperature() != HAL_OK)
-	{
-	    return;
-	}
-
-	if (BME280_CompensatePressure() != HAL_OK)
+	if (SSD1309_Init() != HAL_OK)
 	{
 		return;
 	}
 
-	if (BME280_CompensateHumidity() != HAL_OK)
-	{
-		return;
-	}
+	Display_DrawGolfScreen();
 }
 
 void App_Run(uint32_t currentTime)

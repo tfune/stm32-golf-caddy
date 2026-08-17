@@ -35,6 +35,14 @@ static float temperature_C;
 static float pressure_hPa;
 static float humidity_percent;
 
+static HAL_StatusTypeDef BME280_ReadRawData(void);
+static HAL_StatusTypeDef BME280_ReadCalibrationData(void);
+
+static void BME280_CompensateTemperature(void);
+static void BME280_CompensatePressure(void);
+static void BME280_CompensateHumidity(void);
+
+
 HAL_StatusTypeDef BME280_Init(void)
 {
 	uint8_t chipID;
@@ -103,10 +111,20 @@ HAL_StatusTypeDef BME280_Init(void)
 		return HAL_ERROR;
 	}
 
+	if (BME280_ReadCalibrationData() != HAL_OK)
+	{
+		return HAL_ERROR;
+	}
+
+	if (BME280_Update() != HAL_OK)
+	{
+		return HAL_ERROR;
+	}
+
 	return HAL_OK;
 }
 
-HAL_StatusTypeDef BME280_ReadRawData(void)
+static HAL_StatusTypeDef BME280_ReadRawData(void)
 {
 	if (HAL_I2C_Mem_Read(
 			&hi2c1,
@@ -137,7 +155,7 @@ HAL_StatusTypeDef BME280_ReadRawData(void)
 	return HAL_OK;
 }
 
-HAL_StatusTypeDef BME280_ReadCalibrationData(void)
+static HAL_StatusTypeDef BME280_ReadCalibrationData(void)
 {
 	if (HAL_I2C_Mem_Read(
 			&hi2c1,
@@ -198,7 +216,7 @@ HAL_StatusTypeDef BME280_ReadCalibrationData(void)
 	return HAL_OK;
 }
 
-HAL_StatusTypeDef BME280_CompensateTemperature(void)
+static void BME280_CompensateTemperature(void)
 {
 	int32_t var1;
 	int32_t var2;
@@ -213,11 +231,9 @@ HAL_StatusTypeDef BME280_CompensateTemperature(void)
 	tFine = var1 + var2;
 
 	temperature_C = ((tFine * 5 + 128) >> 8) / 100.0f;
-
-	return HAL_OK;
 }
 
-HAL_StatusTypeDef BME280_CompensatePressure(void)
+static void BME280_CompensatePressure(void)
 {
     int64_t var1;
     int64_t var2;
@@ -238,7 +254,7 @@ HAL_StatusTypeDef BME280_CompensatePressure(void)
 
     if (var1 == 0)
     {
-        return HAL_ERROR;
+        return;
     }
 
     pressureRaw = 1048576 - pressureRaw;
@@ -254,11 +270,9 @@ HAL_StatusTypeDef BME280_CompensatePressure(void)
                   (((int64_t)dig_P7) << 4);
 
     pressure_hPa = pressureRaw / 25600.0f;
-
-    return HAL_OK;
 }
 
-HAL_StatusTypeDef BME280_CompensateHumidity(void)
+static void BME280_CompensateHumidity(void)
 {
     int32_t humidityRaw;
     int32_t humidityComp;
@@ -292,6 +306,18 @@ HAL_StatusTypeDef BME280_CompensateHumidity(void)
     }
 
     humidity_percent = (humidityComp >> 12) / 1024.0f;
+}
 
-    return HAL_OK;
+HAL_StatusTypeDef BME280_Update(void)
+{
+	if (BME280_ReadRawData() != HAL_OK)
+	{
+	    return HAL_ERROR;
+	}
+
+	BME280_CompensateTemperature();
+	BME280_CompensatePressure();
+	BME280_CompensateHumidity();
+
+	return HAL_OK;
 }
